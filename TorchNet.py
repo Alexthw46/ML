@@ -13,6 +13,7 @@ class SimpleNN(t.nn.Module):
         self.linear_chain = t.nn.Linear(self.hidden_size, self.hidden_size)
         self.final = t.nn.Linear(self.hidden_size, self.output_size)
 
+        self.bn1 = t.nn.BatchNorm1d(self.hidden_size)
         # Define the activation functions
         self.relu = t.nn.ReLU()
         self.sigmoid = t.nn.Sigmoid()
@@ -21,6 +22,7 @@ class SimpleNN(t.nn.Module):
     def forward(self, x):
         # Define the forward pass
         x = self.fc1(x)
+        x = self.bn1(x)
         x = self.tanh(x)
         x = self.linear_chain(x)
         x = self.tanh(x)
