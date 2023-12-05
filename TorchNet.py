@@ -22,9 +22,6 @@ class SimpleNN(t.nn.Module):
     def forward(self, x):
         # Define the forward pass
         x = self.fc1(x)
-        x = self.bn1(x)
-        x = self.tanh(x)
-        x = self.linear_chain(x)
         x = self.tanh(x)
         x = self.final(x)
         x = self.sigmoid(x)
