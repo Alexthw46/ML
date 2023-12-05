@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+import sklearn.model_selection
 import torch as t
 import matplotlib.pyplot as plt
 import torch.nn.functional
@@ -23,7 +24,7 @@ def monk(path: str, optimizer: torch.optim.Optimizer,
     # learning rate scheduler
     scheduler = lr_scheduler
 
-    patience = 5
+    patience = 10
     patience_counter = 0
     val_patience_counter = 0
     prev_loss = 1
@@ -121,6 +122,9 @@ def load_dataset(path, verbose=False):
     train_data = pd.get_dummies(train_data, columns=numeric_columns)
     test_data = pd.get_dummies(test_data, columns=numeric_columns)
 
+    #split data into train and test
+    train_data, test_data = sklearn.model_selection.train_test_split(train_data, test_size=0.25)
+
     if verbose:
         print(train_data.head())
 
@@ -130,6 +134,7 @@ def load_dataset(path, verbose=False):
     # Convert input data to PyTorch tensors
     train_features_tensor = t.Tensor(train_data.drop('class', axis=1).values)
     test_features_tensor = t.Tensor(test_data.drop('class', axis=1).values)
+
     return test_features_tensor, test_labels_tensor, train_features_tensor, train_labels_tensor
 
 
