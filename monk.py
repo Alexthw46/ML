@@ -131,11 +131,3 @@ def load_dataset(path, verbose=False):
     train_features_tensor = t.Tensor(train_data.drop('class', axis=1).values)
     test_features_tensor = t.Tensor(test_data.drop('class', axis=1).values)
     return test_features_tensor, test_labels_tensor, train_features_tensor, train_labels_tensor
-
-
-# Press the green button in the gutter to run the script.
-if __name__ == '__main__':
-    # Replace 'path_to_train_file.train' with the actual path to your .train file
-    monk("monks-1")
-    monk("monks-2")
-    monk("monks-3")
