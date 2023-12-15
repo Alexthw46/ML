@@ -16,18 +16,17 @@ def monk(path: str, optimizer: torch.optim.Optimizer,
     test_features_tensor, test_labels_tensor, train_features_tensor, train_labels_tensor = load_dataset(path)
 
     # Define the loss function
-    loss_fn = t.nn.BCELoss()
+    loss_fn = t.nn.MSELoss()
 
     train_loss = []  # List to store losses for plotting
     test_loss = []  # List to store losses for plotting
     # learning rate scheduler
     scheduler = lr_scheduler
 
-    patience = 5
+    # early stopping
+    patience = 7
     patience_counter = 0
-    val_patience_counter = 0
     prev_loss = 1
-    prev_val_loss = 1
 
     # Training loop
     for epoch in range(num_epochs):
@@ -48,16 +47,13 @@ def monk(path: str, optimizer: torch.optim.Optimizer,
         else:
             patience_counter = 0
             prev_loss = running_loss
-
         if patience == patience_counter:
             break
 
         train_loss.append(running_loss)
 
-        # Detach the outputs tensor before performing any operations on it
-        outputs_detached = t.Tensor(np.round(outputs.detach().numpy()))
-        # Compute accuracy using detached outputs
-        acc = accuracy_score(train_labels_tensor.numpy(), t.squeeze(outputs_detached).round())
+        # Compute accuracy using predicted labels and train_labels_tensor
+        acc = accuracy_score(train_labels_tensor.numpy(), t.round(outputs).detach().numpy())
         if epoch == num_epochs - 1:
             print(f"Epoch {epoch + 1}/{num_epochs} - Train Loss: {running_loss}, Accuracy: {acc}")
 
@@ -65,15 +61,6 @@ def monk(path: str, optimizer: torch.optim.Optimizer,
         with t.no_grad():
             test_outputs = neural_network(test_features_tensor)
             val_loss = loss_fn(t.squeeze(test_outputs), test_labels_tensor)
-            if (val_loss > running_loss) and (prev_val_loss - val_loss < eps):
-                val_patience_counter += 1
-            else:
-                val_patience_counter = 0
-                prev_val_loss = val_loss
-
-            if patience == val_patience_counter:
-                break
-
             test_loss.append(val_loss.item())
 
         optimizer.step()
@@ -84,8 +71,8 @@ def monk(path: str, optimizer: torch.optim.Optimizer,
     with t.no_grad():
         test_outputs = neural_network(test_features_tensor)
         final_loss = loss_fn(t.squeeze(test_outputs), test_labels_tensor)
-        print(
-            f"Test Loss: {final_loss.item()}, Accuracy: {accuracy_score(test_labels_tensor, t.squeeze(test_outputs).round())})")
+        acc = accuracy_score(test_labels_tensor.numpy(), t.round(test_outputs).detach().numpy())
+        print(f"Test Loss: {final_loss.item()}, Accuracy: {acc}")
 
     # Plotting the loss curve
     plt.figure(figsize=(8, 6))
