@@ -27,7 +27,7 @@ class CupDataset(Dataset):
         return self.features[idx], self.labels[idx]
 
 
-def load_train_dataset(path: str, folds=5, batch_size=1):
+def load_dataset(path: str):
     """
     Loads the dataset from a given path
         :param batch_size: mini-batch size
@@ -42,11 +42,14 @@ def load_train_dataset(path: str, folds=5, batch_size=1):
                     'TARGET_x', 'TARGET_y', 'TARGET_z']
     dataset = pd.read_csv(path, sep=',', comment='#', names=column_names, index_col='ID')
 
+    return dataset
+
+
+def torch_k_fold(batch_size, dataset, folds):
     # Initialize k-fold cross-validation
     kf = KFold(n_splits=folds, shuffle=True)
     train_loaders = []
     val_loaders = []
-
     for fold_idx, (train_idx, val_idx) in enumerate(kf.split(dataset)):
         print(f"Fold {fold_idx + 1}")
         # Create training and validation datasets for this fold
@@ -56,5 +59,18 @@ def load_train_dataset(path: str, folds=5, batch_size=1):
         # Create DataLoaders for training and validation
         train_loaders.append(DataLoader(train_dataset, batch_size=batch_size, shuffle=True))
         val_loaders.append(DataLoader(val_dataset, batch_size=batch_size))
-
     return train_loaders, val_loaders
+
+
+def skl_arange_dataset(train_dataset: pd.DataFrame, test_dataset: pd.DataFrame, scaler=None):
+    X_dev = train_dataset.iloc[:, :-3].values
+    y_dev = train_dataset.iloc[:, -3:].values
+
+    X_test = test_dataset.iloc[:, :-3].values
+    y_test = test_dataset.iloc[:, -3:].values
+
+    if scaler is not None:
+        X_dev = scaler.transform(X_dev)
+        X_test = scaler.transform(X_test)
+
+    return X_dev, y_dev, X_test, y_test
