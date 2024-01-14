@@ -99,8 +99,9 @@ def skl_arange_dataset(train_dataset: pd.DataFrame, test_dataset: pd.DataFrame, 
     X_test = test_dataset.iloc[:, :-3].values
 
     if scaler is not None:
-        X_dev = scaler.fit_transform(X_dev)
-        X_test = scaler.fit_transform(X_test)
+        scaler.fit(X_dev)
+        X_dev = scaler.transform(X_dev)
+        X_test = scaler.transform(X_test)
 
     # Lists to store KFold splits
     train_data = []

@@ -5,11 +5,12 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 import torch.nn as nn
+from torch.nn import MSELoss
 from torch.utils.data import DataLoader
 from torch.optim import lr_scheduler
 
 
-def torch_train(model, train_loader: DataLoader, loss_fn, optimizer, epochs: int, fold: int = 0,
+def torch_train(model, train_loader: DataLoader, optimizer, epochs: int, loss_fn=MSELoss(), fold: int = 0,
                 val_loader: DataLoader = None,
                 scheduler: lr_scheduler = None, scheduler_on_val=True, verbose=True):
     train_loss = []
@@ -67,11 +68,11 @@ class MEELoss(nn.Module):
 def MLP():
     return nn.Sequential(OrderedDict([
         ('fc1', nn.Linear(10, 50)),
-        ('relu1', nn.ReLU()),
+        ('relu1', nn.Tanh()),
         ('fc2', nn.Linear(50, 25)),
-        ('relu2', nn.ReLU()),
+        ('relu2', nn.Tanh()),
         ('fc3', nn.Linear(25, 25)),
-        ('relu3', nn.ReLU()),
+        ('relu3', nn.Tanh()),
         ('final', nn.Linear(25, 3))
     ]))
 
@@ -90,7 +91,7 @@ def plot_loss(train_loss, fold: int, val_loss=None):
     plt.show()
 
 
-def grid_search(model_builder, parameters, train_loader, val_loader, scheduler, loss_fn=MEELoss(),
+def grid_search(model_builder, parameters, train_loader, val_loader, scheduler, loss_fn=MSELoss(),
                 max_epochs=100,
                 verbose=True):
     best_train_loss = float('inf')
@@ -111,7 +112,6 @@ def grid_search(model_builder, parameters, train_loader, val_loader, scheduler, 
                                            train_loader=train_loader,
                                            val_loader=val_loader,
                                            scheduler=scheduler,
-                                           loss_fn=loss_fn,
                                            epochs=max_epochs,
                                            verbose=verbose)
 
@@ -146,7 +146,7 @@ def get_scheduler(optimizer, scheduler_type, hyperparameters):
 
 
 def grid_search_inner(model_builder, optimizer_params, train_loader, val_loader, epochs, scheduler=('', None),
-                      loss_fn=MEELoss(),
+                      loss_fn=MSELoss(),
                       verbose=True):
     train_loss, val_loss = [], []  # Lists to store losses for each fold
     for train_loader, val_loader in zip(train_loader, val_loader):
