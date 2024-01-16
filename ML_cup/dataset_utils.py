@@ -38,7 +38,7 @@ def load_dataset(path: str):
                     'INPUT_1', 'INPUT_2', 'INPUT_3', 'INPUT_4', 'INPUT_5', 'INPUT_6', 'INPUT_7', 'INPUT_8', 'INPUT_9',
                     'INPUT_10',
                     'TARGET_x', 'TARGET_y', 'TARGET_z']
-    dataset = pd.read_csv(path, sep=',', comment='#', names=column_names, index_col='ID')
+    dataset = pd.read_csv(path, sep=',', comment='#', names=column_names, index_col='ID', dtype=float)
 
     return dataset
 
@@ -92,33 +92,28 @@ def torch_k_fold(batch_size, dataset, folds):
     return train_loaders, val_loaders
 
 
-def skl_arange_dataset(train_dataset: pd.DataFrame, test_dataset: pd.DataFrame, folds=0, scaler=None):
+def arange_datasets(train_dataset: pd.DataFrame, test_dataset: pd.DataFrame):
     X_dev = train_dataset.iloc[:, :-3].values
     y_dev = train_dataset.iloc[:, -3:].values
 
     X_test = test_dataset.iloc[:, :-3].values
 
-    if scaler is not None:
-        scaler.fit(X_dev)
-        X_dev = scaler.transform(X_dev)
-        X_test = scaler.transform(X_test)
+    return X_dev, y_dev, X_test
 
+
+def train_val_kfold(X_dev, y_dev, folds, random_state):
     # Lists to store KFold splits
-    train_data = []
-    val_data = []
-
+    train_folds = []
+    val_folds = []
     if folds > 1:
         # Initialize KFold
-        kf = KFold(n_splits=folds, shuffle=True, random_state=42)  # Adjust parameters as needed
+        kf = KFold(n_splits=folds, shuffle=True, random_state=random_state)  # Adjust parameters as needed
 
         for train_index, val_index in kf.split(X_dev):
             train_features, val_features = X_dev[train_index], X_dev[val_index]
             train_target, val_target = y_dev[train_index], y_dev[val_index]
 
-            train_fold = (train_features, train_target)
-            val_fold = (val_features, val_target)
+            train_folds.append((train_features, train_target))
+            val_folds.append((val_features, val_target))
 
-            train_data.append(train_fold)
-            val_data.append(val_fold)
-
-    return X_dev, y_dev, X_test, train_data, val_data
+    return train_folds, val_folds

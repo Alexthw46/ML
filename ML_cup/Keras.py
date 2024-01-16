@@ -19,17 +19,17 @@ def mee(y_true, y_pred):
     return mean_euclidean_error
 
 
-def keras_train(model: k.Model, optimizer, train_data, callback: list[callbacks.Callback],
+def keras_train(model: k.Model, optimizer, train_data, val_data, callback: list[callbacks.Callback],
                 epochs=100, batch_size=32):
-    model.compile(optimizer=optimizer, loss=k.losses.MeanSquaredError(), metrics=[mee])
+    model.compile(optimizer=optimizer, loss="mse", metrics=[mee])
 
     train_X, train_y = train_data
-    history = model.fit(train_X, train_y, epochs=epochs, batch_size=batch_size, validation_split=0.2,
+    history = model.fit(train_X, train_y, epochs=epochs, batch_size=batch_size, validation_data=val_data,
                         callbacks=callback, shuffle=True)
     return history
 
 
-def plot_keras_history(history, start_epoch=10):
+def plot_keras_history(history, start_epoch=0):
     epoch_range = range(start_epoch, len(history.history['loss']))
 
     # Create subplots
@@ -59,17 +59,19 @@ def plot_keras_history(history, start_epoch=10):
 
 # method to create a model
 def keras_mlp(hidden_layers, input_dim=10, output_dim=3):
-    model = Sequential()
-    model.add(layers.Input(shape=(input_dim,)))
-    for layer_param, name in hidden_layers:
+    initializer = k.initializers.Orthogonal(gain=1.0, seed=108)
+    input = layers.Input(shape=(input_dim,))
+    x = input
+
+    for name, layer_param in hidden_layers:
         if name == 'dense':
-            model.add(layers.Dense(layer_param, activation='tanh'))
+            x = layers.Dense(layer_param, activation='tanh', kernel_initializer=initializer)(x)
         elif name == 'dropout':
-            model.add(layers.Dropout(layer_param))
+            x = layers.Dropout(layer_param)(x)
         elif name == 'bnorm':
-            model.add(layers.BatchNormalization())
-    model.add(layers.Dense(output_dim, activation='linear'))
-    return model
+            x = layers.BatchNormalization()(x)
+    output = layers.Dense(output_dim, activation='linear')(x)
+    return k.Model(input, output)
 
 
 def keras_grid_search(model_builder, model_layers, parameters, train_data, val_data, max_epochs=100, verbose=0,
@@ -105,30 +107,24 @@ def keras_grid_search_inner(model_builder, model_layers, optimizer_type, train_d
     if params is None:
         params = {}
     train_loss, val_loss = [], []
-    callback = []
-    '''
     callback = [
-        callbacks.ReduceLROnPlateau(monitor='val_loss', mode='min', patience=10, cooldown=2, verbose=0, factor=0.25,
-                                    min_lr=1e-7,
-                                    min_delta=1e-5),
-        callbacks.EarlyStopping(monitor='val_loss', mode='min', patience=10, verbose=0, min_delta=1e-5,
-                                restore_best_weights=True)
+        callbacks.EarlyStopping(monitor='val_loss', mode='min', patience=40, verbose=0, min_delta=1e-5)
     ]
-    '''
     # train all folds and get the average loss
     for train_dataset, val_dataset in zip(train_data, val_data):
         train_features, train_labels = train_dataset
 
         model: k.models.Model = model_builder(model_layers)
         if optimizer_type == 'Adam':
-            model.compile(optimizer=Adam(**params), loss=k.losses.MSE, metrics=[mee])
+            optimizer = Adam(**params)
         elif optimizer_type == 'SGD':
-            model.compile(optimizer=SGD(**params), loss=k.losses.MSE, metrics=[mee])
+            optimizer = SGD(**params)
         elif optimizer_type == 'RMSprop':
-            model.compile(optimizer=RMSprop(**params), loss=k.losses.MSE, metrics=[mee])
+            optimizer = RMSprop(**params)
         else:
             raise ValueError('Optimizer not supported')
 
+        model.compile(optimizer=optimizer, loss=k.losses.MSE, metrics=[mee])
         history = model.fit(train_features, train_labels, epochs=epochs, verbose=verbose,
                             validation_data=val_dataset, batch_size=32, callbacks=callback)
 

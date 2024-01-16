@@ -67,13 +67,13 @@ class MEELoss(nn.Module):
 
 def MLP():
     return nn.Sequential(OrderedDict([
-        ('fc1', nn.Linear(10, 50)),
+        ('fc1', nn.Linear(10, 300)),
         ('relu1', nn.Tanh()),
-        ('fc2', nn.Linear(50, 25)),
+        ('fc2', nn.Linear(300, 250)),
         ('relu2', nn.Tanh()),
-        ('fc3', nn.Linear(25, 25)),
+        ('fc3', nn.Linear(250, 250)),
         ('relu3', nn.Tanh()),
-        ('final', nn.Linear(25, 3))
+        ('final', nn.Linear(250, 3))
     ]))
 
 
