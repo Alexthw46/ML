@@ -8,17 +8,17 @@ from torch.utils.data import Dataset
 
 
 class CupDataset(Dataset):
-    def __init__(self, dataframe):
+    def __init__(self, dataframe, device=t.device('cpu')):
         # Load the CSV file
         self.data = dataframe
-
+        self.device = device
         # Assuming the last three columns are the label and rest are features
         self.features = self.data.iloc[:, :-3].values
         self.labels = self.data.iloc[:, -3:].values
 
         # Convert data to PyTorch tensors
-        self.features = t.tensor(self.features, dtype=t.float32)
-        self.labels = t.tensor(self.labels, dtype=t.float32)
+        self.features = t.tensor(self.features, dtype=t.float32).to(self.device)
+        self.labels = t.tensor(self.labels, dtype=t.float32).to(self.device)
 
     def __len__(self):
         return len(self.data)
@@ -58,13 +58,16 @@ def torch_split_dataset(dataset, train_ratio, batch_size):
 
     train_indices = indices[:train_size]
     val_indices = indices[train_size:]
-
+    if t.cuda.is_available():
+        device = t.device('cuda')
+    else:
+        device = t.device('cpu')
     # Create Subset datasets using CupDataset
-    train_dataset = Subset(CupDataset(dataset), train_indices)
-    val_dataset = Subset(CupDataset(dataset), val_indices)
+    train_dataset = Subset(CupDataset(dataset, device), train_indices)
+    val_dataset = Subset(CupDataset(dataset, device), val_indices)
 
     # Create DataLoaders for training and validation
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, generator=t.Generator(device=device))
     val_loader = DataLoader(val_dataset, batch_size=batch_size)
 
     return train_loader, val_loader
@@ -81,13 +84,19 @@ def torch_k_fold(batch_size, dataset, folds):
     kf = KFold(n_splits=folds, shuffle=True)
     train_loaders = []
     val_loaders = []
+    if t.cuda.is_available():
+        device = t.device('cuda')
+    else:
+        device = t.device('cpu')
+
     for train_idx, val_idx in kf.split(dataset):
         # Create training and validation datasets for this fold
-        train_dataset = Subset(CupDataset(dataset), train_idx)
-        val_dataset = Subset(CupDataset(dataset), val_idx)
+        train_dataset = Subset(CupDataset(dataset, device=device), train_idx)
+        val_dataset = Subset(CupDataset(dataset, device=device), val_idx)
 
         # Create DataLoaders for training and validation
-        train_loaders.append(DataLoader(train_dataset, batch_size=batch_size, shuffle=True))
+        train_loaders.append(
+            DataLoader(train_dataset, batch_size=batch_size, shuffle=True, generator=t.Generator(device=device)))
         val_loaders.append(DataLoader(val_dataset, batch_size=batch_size))
     return train_loaders, val_loaders
 

@@ -18,6 +18,7 @@ def torch_train(model, train_loader: DataLoader, optimizer, epochs: int, loss_fn
     avg_loss, avg_vloss = 0, 0
     if verbose:
         print(f'Fold: {fold}')
+
     for epoch in range(epochs):
         epoch_loss = 0
         epoch_vloss = 0

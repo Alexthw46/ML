@@ -2,12 +2,11 @@ import itertools
 
 import numpy as np
 import tensorflow.keras as k
-from keras import layers
+from tensorflow.keras import layers
 from matplotlib import pyplot as plt
 from tensorflow.keras import callbacks
 from tensorflow.keras.backend import mean, sqrt, sum, square
 
-from tensorflow.keras.models import Sequential
 from tensorflow.keras.optimizers import Adam, SGD, RMSprop
 
 
@@ -21,7 +20,7 @@ def mee(y_true, y_pred):
 
 def keras_train(model: k.Model, optimizer, train_data, val_data, callback: list[callbacks.Callback],
                 epochs=100, batch_size=32):
-    model.compile(optimizer=optimizer, loss="mse", metrics=[mee])
+    model.compile(optimizer=optimizer, loss="mse", metrics=[mee], jit_compile=True)
 
     train_X, train_y = train_data
     history = model.fit(train_X, train_y, epochs=epochs, batch_size=batch_size, validation_data=val_data,
@@ -58,8 +57,7 @@ def plot_keras_history(history, start_epoch=0):
 
 
 # method to create a model
-def keras_mlp(hidden_layers, input_dim=10, output_dim=3):
-    initializer = k.initializers.Orthogonal(gain=1.0, seed=108)
+def keras_mlp(hidden_layers, input_dim=10, output_dim=3, initializer=k.initializers.Orthogonal(seed=18)):
     input = layers.Input(shape=(input_dim,))
     x = input
 
@@ -70,7 +68,8 @@ def keras_mlp(hidden_layers, input_dim=10, output_dim=3):
             x = layers.Dropout(layer_param)(x)
         elif name == 'bnorm':
             x = layers.BatchNormalization()(x)
-    output = layers.Dense(output_dim, activation='linear')(x)
+
+    output = layers.Dense(output_dim, activation='linear', kernel_initializer=initializer)(x)
     return k.Model(input, output)
 
 
@@ -88,15 +87,19 @@ def keras_grid_search(model_builder, model_layers, parameters, train_data, val_d
         combinations = [dict(zip(keys, v)) for v in itertools.product(*values)]
 
         for combo in combinations:
+            print(f'Training with parameters: {combo}')
             train, val = keras_grid_search_inner(model_builder, model_layers, optimizer_type, train_data,
                                                  val_data,
                                                  epochs=max_epochs, verbose=verbose, params=combo)
+            print(f'Train Loss: {train}, Val Loss: {val}')
             if train < best_train_loss and val < best_val_loss:
                 best_train_loss = train
                 best_val_loss = val
                 best_parameters = combo.copy()
                 best_parameters['optimizer'] = optimizer_type
-                print(f'New best parameters: {combo}, Train Loss: {train}, Val Loss: {val}')
+                print('--------------------------------')
+                print(f'New best parameters')
+                print('--------------------------------')
 
     print(f'Best Parameters: {best_parameters}, Train Loss: {best_train_loss}, Val Loss: {best_val_loss}')
     return best_parameters, (best_train_loss, best_val_loss)
@@ -108,7 +111,11 @@ def keras_grid_search_inner(model_builder, model_layers, optimizer_type, train_d
         params = {}
     train_loss, val_loss = [], []
     callback = [
-        callbacks.EarlyStopping(monitor='val_loss', mode='min', patience=40, verbose=0, min_delta=1e-5)
+        callbacks.EarlyStopping(monitor='val_loss', mode='min', patience=20, verbose=0, min_delta=1e-7),
+        callbacks.ReduceLROnPlateau(monitor='val_loss', mode='min', patience=10, cooldown=20, verbose=0,
+                                    factor=0.31,
+                                    min_lr=1e-7,
+                                    min_delta=1e-7),
     ]
     # train all folds and get the average loss
     for train_dataset, val_dataset in zip(train_data, val_data):
@@ -124,7 +131,7 @@ def keras_grid_search_inner(model_builder, model_layers, optimizer_type, train_d
         else:
             raise ValueError('Optimizer not supported')
 
-        model.compile(optimizer=optimizer, loss=k.losses.MSE, metrics=[mee])
+        model.compile(optimizer=optimizer, loss="mse", metrics=[mee], jit_compile=True)
         history = model.fit(train_features, train_labels, epochs=epochs, verbose=verbose,
                             validation_data=val_dataset, batch_size=32, callbacks=callback)
 
