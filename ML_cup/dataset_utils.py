@@ -1,8 +1,7 @@
-import pandas as pd
 import numpy as np
+import pandas as pd
 import torch as t
-import matplotlib.pyplot as plt
-from sklearn.model_selection import KFold
+from sklearn.model_selection import KFold, train_test_split
 from torch.utils.data import DataLoader, Subset
 from torch.utils.data import Dataset
 
@@ -73,13 +72,17 @@ def torch_split_dataset(dataset, train_ratio, batch_size):
     return train_loader, val_loader
 
 
-def torch_k_fold(batch_size, dataset, folds):
+def torch_k_fold(batch_size, dataset: pd.DataFrame, folds):
     """
     :param dataset: dataset to split
     :param batch_size: mini-batch size
     :param folds: k-fold size
     :return: list of train and validation loaders for each fold
     """
+
+    # split aside the test set as 15% of the dataset
+    dev_data, test_data = train_test_split(dataset, test_size=0.15, random_state=42)
+    dataset = dev_data
     # Initialize k-fold cross-validation
     kf = KFold(n_splits=folds, shuffle=True)
     train_loaders = []
@@ -88,6 +91,8 @@ def torch_k_fold(batch_size, dataset, folds):
         device = t.device('cuda')
     else:
         device = t.device('cpu')
+
+    test_loader = DataLoader(CupDataset(test_data, device=device), batch_size=batch_size)
 
     for train_idx, val_idx in kf.split(dataset):
         # Create training and validation datasets for this fold
@@ -98,10 +103,11 @@ def torch_k_fold(batch_size, dataset, folds):
         train_loaders.append(
             DataLoader(train_dataset, batch_size=batch_size, shuffle=True, generator=t.Generator(device=device)))
         val_loaders.append(DataLoader(val_dataset, batch_size=batch_size))
-    return train_loaders, val_loaders
+
+    return train_loaders, val_loaders, test_loader
 
 
-def arange_datasets(train_dataset: pd.DataFrame, test_dataset: pd.DataFrame):
+def arrange_datasets(train_dataset: pd.DataFrame, test_dataset: pd.DataFrame):
     X_dev = train_dataset.iloc[:, :-3].values
     y_dev = train_dataset.iloc[:, -3:].values
 

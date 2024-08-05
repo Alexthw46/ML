@@ -20,7 +20,7 @@ def mee(y_true, y_pred):
 
 def keras_train(model: k.Model, optimizer, train_data, val_data, callback: list[callbacks.Callback],
                 epochs=100, batch_size=32):
-    model.compile(optimizer=optimizer, loss="mse", metrics=[mee], jit_compile=True)
+    model.compile(optimizer=optimizer, loss="mse", metrics=[mee])
 
     train_X, train_y = train_data
     history = model.fit(train_X, train_y, epochs=epochs, batch_size=batch_size, validation_data=val_data,
@@ -88,10 +88,12 @@ def keras_grid_search(model_builder, model_layers, parameters, train_data, val_d
 
         for combo in combinations:
             print(f'Training with parameters: {combo}')
-            train, val = keras_grid_search_inner(model_builder, model_layers, optimizer_type, train_data,
+            m_train, m_val, std_train, std_val = keras_grid_search_inner(model_builder, model_layers, optimizer_type, train_data,
                                                  val_data,
                                                  epochs=max_epochs, verbose=verbose, params=combo)
-            print(f'Train Loss: {train}, Val Loss: {val}')
+            print(f'Train Loss: mean - {m_train} std - {std_train}, Val Loss: mean - {m_val} std - {std_val}')
+            train = m_train + std_train / 2
+            val = m_val + std_val / 2
             if train < best_train_loss and val < best_val_loss:
                 best_train_loss = train
                 best_val_loss = val
@@ -111,7 +113,7 @@ def keras_grid_search_inner(model_builder, model_layers, optimizer_type, train_d
         params = {}
     train_loss, val_loss = [], []
     callback = [
-        callbacks.EarlyStopping(monitor='val_loss', mode='min', patience=20, verbose=0, min_delta=1e-7),
+        callbacks.EarlyStopping(monitor='val_loss', mode='min', patience=10, verbose=0, min_delta=1e-7),
         callbacks.ReduceLROnPlateau(monitor='val_loss', mode='min', patience=10, cooldown=20, verbose=0,
                                     factor=0.31,
                                     min_lr=1e-7,
@@ -131,11 +133,11 @@ def keras_grid_search_inner(model_builder, model_layers, optimizer_type, train_d
         else:
             raise ValueError('Optimizer not supported')
 
-        model.compile(optimizer=optimizer, loss="mse", metrics=[mee], jit_compile=True)
+        model.compile(optimizer=optimizer, loss="mse", metrics=[mee])
         history = model.fit(train_features, train_labels, epochs=epochs, verbose=verbose,
                             validation_data=val_dataset, batch_size=32, callbacks=callback)
 
         train_loss.append(history.history['loss'][-1])
         val_loss.append(history.history['val_loss'][-1])
 
-    return np.mean(train_loss), np.mean(val_loss)
+    return np.mean(train_loss), np.mean(val_loss), np.std(train_loss), np.std(val_loss)

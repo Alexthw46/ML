@@ -58,6 +58,18 @@ def torch_train(model, train_loader: DataLoader, optimizer, epochs: int, loss_fn
     return avg_loss, avg_vloss
 
 
+def torch_predict(model, test_loader: DataLoader):
+    # evaluate the model on the test set using mee metric
+    predictions = []
+    mee = []
+    with torch.no_grad():
+        for data, true in test_loader:
+            output = model(data)
+            predictions.append(output)
+            mee.append(torch.norm(output - true, dim=-1))
+    return torch.mean(torch.cat(mee)).item()
+
+
 class MEELoss(nn.Module):
     def __init__(self):
         super(MEELoss, self).__init__()
