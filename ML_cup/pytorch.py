@@ -6,11 +6,14 @@ import numpy as np
 import torch
 import torch.nn as nn
 from torch.nn import MSELoss
+from torch.optim import lr_scheduler, Optimizer
 from torch.utils.data import DataLoader
-from torch.optim import lr_scheduler
 
 
-def torch_train(model, train_loader: DataLoader, optimizer, epochs: int, loss_fn=MSELoss(), fold: int = 0,
+def torch_train(model: torch.nn.Sequential, train_loader: DataLoader, optimizer: Optimizer, epochs: int,
+                loss_fn=MSELoss(),
+                clip: float = None,
+                fold: int = 0,
                 val_loader: DataLoader = None,
                 scheduler: lr_scheduler = None, scheduler_on_val=True, verbose=True):
     train_loss = []
@@ -23,6 +26,7 @@ def torch_train(model, train_loader: DataLoader, optimizer, epochs: int, loss_fn
         epoch_loss = 0
         epoch_vloss = 0
 
+        model.train()
         # minibatch training loop
         for (data, target) in train_loader:
             optimizer.zero_grad()
@@ -30,6 +34,8 @@ def torch_train(model, train_loader: DataLoader, optimizer, epochs: int, loss_fn
             loss = loss_fn(output, target)
             loss.backward()
             epoch_loss += loss.item()
+            if clip is not None:
+                torch.nn.utils.clip_grad_norm_(model.parameters(), clip)
             optimizer.step()
 
         avg_loss = epoch_loss / (len(train_loader))
@@ -38,6 +44,7 @@ def torch_train(model, train_loader: DataLoader, optimizer, epochs: int, loss_fn
             scheduler.step(metrics=avg_loss)
 
         if val_loader is not None:
+            model.eval()
             with torch.no_grad():
                 for (data, target) in val_loader:
                     output = model(data)
@@ -90,6 +97,35 @@ def MLP():
     ]))
 
 
+def MLPv2():
+    return nn.Sequential(OrderedDict([
+        ('fc1', nn.Linear(10, 300)),
+        ('relu1', nn.Tanh()),
+        ('bn_1', nn.BatchNorm1d(300)),
+        ('fc2', nn.Linear(300, 250)),
+        ('bn_2', nn.BatchNorm1d(250)),
+        ('relu2', nn.Tanh()),
+        ('fc3', nn.Linear(250, 250)),
+        ('bn_3', nn.BatchNorm1d(250)),
+        ('relu3', nn.Tanh()),
+        ('final', nn.Linear(250, 3))
+    ]))
+
+
+def MLPv3():
+    return nn.Sequential(OrderedDict([
+        ('fc1', nn.Linear(10, 300)),
+        ('relu1', nn.Tanh()),
+        ('fc2', nn.Linear(300, 300)),
+        ('relu2', nn.Tanh()),
+        ('fc3', nn.Linear(300, 250)),
+        ('relu3', nn.Tanh()),
+        ('fc4', nn.Linear(250, 250)),
+        ('relu4', nn.Tanh()),
+        ('final', nn.Linear(250, 3))
+    ]))
+
+
 def plot_loss(train_loss, fold: int, val_loss=None):
     # Plotting the loss curve
     plt.figure(figsize=(6, 6))
@@ -104,8 +140,7 @@ def plot_loss(train_loss, fold: int, val_loss=None):
     plt.show()
 
 
-def grid_search(model_builder, parameters, train_loader, val_loader, scheduler, loss_fn=MSELoss(),
-                max_epochs=100,
+def grid_search(model_builder, parameters, train_loader, val_loader, scheduler, max_epochs=100,
                 verbose=True):
     best_train_loss = float('inf')
     best_val_loss = float('inf')
