@@ -87,7 +87,7 @@ class MEELoss(nn.Module):
 
 def MLP():
     return nn.Sequential(OrderedDict([
-        ('fc1', nn.Linear(10, 300)),
+        ('fc1', nn.Linear(12, 300)),
         ('relu1', nn.Tanh()),
         ('fc2', nn.Linear(300, 250)),
         ('relu2', nn.Tanh()),
@@ -99,7 +99,7 @@ def MLP():
 
 def MLPv2():
     return nn.Sequential(OrderedDict([
-        ('fc1', nn.Linear(10, 300)),
+        ('fc1', nn.Linear(12, 300)),
         ('relu1', nn.Tanh()),
         ('bn_1', nn.BatchNorm1d(300)),
         ('fc2', nn.Linear(300, 250)),
@@ -114,7 +114,7 @@ def MLPv2():
 
 def MLPv3():
     return nn.Sequential(OrderedDict([
-        ('fc1', nn.Linear(10, 300)),
+        ('fc1', nn.Linear(12, 300)),
         ('relu1', nn.Tanh()),
         ('fc2', nn.Linear(300, 300)),
         ('relu2', nn.Tanh()),

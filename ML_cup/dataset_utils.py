@@ -35,7 +35,7 @@ def load_dataset(path: str):
     # Load the dataset
     column_names = ['ID',
                     'INPUT_1', 'INPUT_2', 'INPUT_3', 'INPUT_4', 'INPUT_5', 'INPUT_6', 'INPUT_7', 'INPUT_8', 'INPUT_9',
-                    'INPUT_10',
+                    'INPUT_10', 'INPUT_11', 'INPUT_12',
                     'TARGET_x', 'TARGET_y', 'TARGET_z']
     dataset = pd.read_csv(path, sep=',', comment='#', names=column_names, index_col='ID', dtype=float)
 

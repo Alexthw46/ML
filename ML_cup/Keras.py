@@ -57,7 +57,7 @@ def plot_keras_history(history, start_epoch=0):
 
 
 # method to create a model
-def keras_mlp(hidden_layers, input_dim=10, output_dim=3, initializer=k.initializers.Orthogonal(seed=18)):
+def keras_mlp(hidden_layers, input_dim=12, output_dim=3, initializer=k.initializers.Orthogonal(seed=18)):
     input = layers.Input(shape=(input_dim,))
     x = input
 
