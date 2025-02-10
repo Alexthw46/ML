@@ -72,7 +72,7 @@ def torch_split_dataset(dataset, train_ratio, batch_size):
     return train_loader, val_loader
 
 
-def torch_k_fold(batch_size, dataset: pd.DataFrame, folds):
+def torch_k_fold(batch_size, dataset: pd.DataFrame, folds, random_state):
     """
     :param dataset: dataset to split
     :param batch_size: mini-batch size
@@ -81,7 +81,7 @@ def torch_k_fold(batch_size, dataset: pd.DataFrame, folds):
     """
 
     # split aside the test set as 15% of the dataset
-    dev_data, test_data = train_test_split(dataset, test_size=0.15, random_state=42)
+    dev_data, test_data = train_test_split(dataset, test_size=0.15, random_state=random_state)
     dataset = dev_data
     # Initialize k-fold cross-validation
     kf = KFold(n_splits=folds, shuffle=True)
@@ -101,7 +101,7 @@ def torch_k_fold(batch_size, dataset: pd.DataFrame, folds):
 
         # Create DataLoaders for training and validation
         train_loaders.append(
-            DataLoader(train_dataset, batch_size=batch_size, shuffle=True, generator=t.Generator(device=device)))
+            DataLoader(train_dataset, batch_size=batch_size, shuffle=True))
         val_loaders.append(DataLoader(val_dataset, batch_size=batch_size))
 
     return train_loaders, val_loaders, test_loader
