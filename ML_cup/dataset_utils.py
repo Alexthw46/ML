@@ -26,7 +26,7 @@ class CupDataset(Dataset):
         return self.features[idx], self.labels[idx]
 
 
-def load_dataset(path: str):
+def load_dataset(path: str) -> pd.DataFrame:
     """
     Loads the dataset from a given path
         :param path: to the csv file
@@ -42,7 +42,7 @@ def load_dataset(path: str):
     return dataset
 
 
-def torch_split_dataset(dataset, train_ratio, batch_size):
+def torch_split_dataset(dataset, train_ratio, batch_size, rand) -> (DataLoader, DataLoader):
     """
     :param dataset: dataframe to split
     :param train_ratio: percentage of training set
@@ -53,6 +53,7 @@ def torch_split_dataset(dataset, train_ratio, batch_size):
     # Split the dataset into train and validation
     train_size = int(train_ratio * len(dataset))  # 80% train, 20% validation (adjust as needed)
     indices = list(range(len(dataset)))
+    np.random.seed(rand)
     np.random.shuffle(indices)
 
     train_indices = indices[:train_size]
@@ -80,8 +81,8 @@ def torch_k_fold(batch_size, dataset: pd.DataFrame, folds, random_state):
     :return: list of train and validation loaders for each fold
     """
 
-    # split aside the test set as 15% of the dataset
-    dev_data, test_data = train_test_split(dataset, test_size=0.15, random_state=random_state)
+    # split aside the test set as 20% of the dataset
+    dev_data, test_data = train_test_split(dataset, test_size=0.2, random_state=random_state)
     dataset = dev_data
     # Initialize k-fold cross-validation
     kf = KFold(n_splits=folds, shuffle=True)
@@ -115,6 +116,36 @@ def arrange_datasets(train_dataset: pd.DataFrame, test_dataset: pd.DataFrame):
 
     return X_dev, y_dev, X_test
 
+def skl_arange_dataset(train_dataset: pd.DataFrame, test_dataset: pd.DataFrame, folds=0, scaler=None, seed=42):
+    X_dev = train_dataset.iloc[:, :-3].values
+    y_dev = train_dataset.iloc[:, -3:].values
+
+    X_blind = test_dataset.iloc[:, :-3].values
+
+    if scaler is not None:
+        X_dev = scaler.fit_transform(X_dev)
+        X_blind = scaler.transform(X_blind)
+
+    X_dev, X_test, y_dev, y_test = train_test_split(X_dev, y_dev, test_size=0.2, random_state=seed)
+    # Lists to store KFold splits
+    train_data = []
+    val_data = []
+
+    if folds > 1:
+        # Initialize KFold
+        kf = KFold(n_splits=folds, shuffle=True, random_state=seed)  # Adjust parameters as needed
+
+        for train_index, val_index in kf.split(X_dev):
+            train_features, val_features = X_dev[train_index], X_dev[val_index]
+            train_target, val_target = y_dev[train_index], y_dev[val_index]
+
+            train_fold = (train_features, train_target)
+            val_fold = (val_features, val_target)
+
+            train_data.append(train_fold)
+            val_data.append(val_fold)
+
+    return X_dev, y_dev, X_blind, train_data, val_data
 
 def train_val_kfold(X_dev, y_dev, folds, random_state):
     # Lists to store KFold splits
