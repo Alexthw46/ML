@@ -8,40 +8,34 @@ from sklearn.metrics import accuracy_score
 from TorchNet import SimpleNN
 
 
-def monk(path: str, optimizer: torch.optim.Optimizer,
-         neural_network: torch.nn.Module = SimpleNN(17, 3, 1),
-         num_epochs=50,
-         lr_scheduler=None,
-         eps=0.0005,
-         verbose=True):
-    test_features_tensor, test_labels_tensor, train_features_tensor, train_labels_tensor = toTensor(load_dataset(path))
+def monk(path: str, optimizer: t.optim.Optimizer, neural_network: t.nn.Module,
+         num_epochs=50, lr_scheduler=None, eps=0.0005, verbose=True, logscale=False):
+    test_features_tensor, test_labels_tensor, train_features_tensor, train_labels_tensor = to_tensor(load_dataset(path))
 
     # Define the loss function
     loss_fn = t.nn.MSELoss()
 
-    train_loss = []  # List to store losses for plotting
-    test_loss = []  # List to store losses for plotting
-    train_acc = []  # List to store accuracy for plotting
-    test_acc = []  # List to store accuracy for plotting
+    train_loss = []
+    test_loss = []
+    train_acc = []
+    test_acc = []
 
-    # learning rate scheduler
     scheduler = lr_scheduler
 
-    # early stopping
     patience = 7
     patience_counter = 0
     prev_loss = 1
 
+    device = t.device('cuda' if t.cuda.is_available() else 'cpu')
+    neural_network.to(device)
+    train_features_tensor, train_labels_tensor = train_features_tensor.to(device), train_labels_tensor.to(device)
+    test_features_tensor, test_labels_tensor = test_features_tensor.to(device), test_labels_tensor.to(device)
+
     # Training loop
     for epoch in range(num_epochs):
-
-        # Zero the parameter gradients
         optimizer.zero_grad()
 
-        # Forward pass
         outputs = neural_network(train_features_tensor)
-
-        # Compute the loss
         loss = loss_fn(t.squeeze(outputs), train_labels_tensor)
         loss.backward()
 
@@ -55,54 +49,50 @@ def monk(path: str, optimizer: torch.optim.Optimizer,
             break
 
         train_loss.append(running_loss)
-
-        # Compute accuracy using predicted labels and train_labels_tensor
-        acc = accuracy_score(train_labels_tensor.numpy(), t.round(outputs).detach().numpy())
+        acc = accuracy_score(train_labels_tensor.cpu().numpy(), t.round(outputs).detach().cpu().numpy())
         train_acc.append(acc)
-        if epoch == num_epochs - 1:
-            print(f"Epoch {epoch + 1}/{num_epochs} - Train Loss: {running_loss}, Accuracy: {acc}")
 
-        # Evaluate on test data
         with t.no_grad():
             test_outputs = neural_network(test_features_tensor)
             val_loss = loss_fn(t.squeeze(test_outputs), test_labels_tensor)
             test_loss.append(val_loss.item())
-            acc = accuracy_score(test_labels_tensor.numpy(), t.round(test_outputs).detach().numpy())
+            acc = accuracy_score(test_labels_tensor.cpu().numpy(), t.round(test_outputs).detach().cpu().numpy())
             test_acc.append(acc)
 
         optimizer.step()
         if scheduler is not None:
             scheduler.step()
 
-    # Final evaluate on test data
-    with t.no_grad():
-        test_outputs = neural_network(test_features_tensor)
-        final_loss = loss_fn(t.squeeze(test_outputs), test_labels_tensor)
-        acc = accuracy_score(test_labels_tensor.numpy(), t.round(test_outputs).detach().numpy())
-        print(f"Test Loss: {final_loss.item()}, Accuracy: {acc}")
+    # Compute the average overfitting score
+    loss_gap = np.abs(np.array(test_loss) - np.array(train_loss))
+    avg_overfitting = np.mean(loss_gap)
 
     if verbose:
-        # Plotting the loss curve
+        print(f"Overfitting Score: {avg_overfitting:.4f}")
+
+        # Plot Loss Curve
         plt.figure(figsize=(8, 6))
         plt.plot(train_loss, label='Training Loss')
-        plt.plot(test_loss, label='Validation Loss')
+        plt.plot(test_loss, label='Test Loss')
         plt.xlabel('Epochs')
         plt.ylabel('Loss')
         plt.title('Training Loss Curve')
         plt.legend()
         plt.grid(True)
+        plt.yscale('log' if logscale else 'linear')
         plt.show()
 
+        # Plot Accuracy Curve
         plt.figure(figsize=(8, 6))
         plt.plot(train_acc, label='Training Accuracy')
-        plt.plot(test_acc, label='Validation Accuracy')
+        plt.plot(test_acc, label='Test Accuracy')
         plt.xlabel('Epochs')
         plt.ylabel('Accuracy')
         plt.legend()
         plt.grid(True)
         plt.show()
 
-    return acc, final_loss.item()
+    return avg_overfitting, acc, test_loss[-1]
 
 
 def load_dataset(path, verbose=False):
@@ -133,7 +123,7 @@ def load_dataset(path, verbose=False):
     return train_data, test_data
 
 
-def toTensor(data):
+def to_tensor(data):
     train_data, test_data = data
     # Convert output data to PyTorch tensors
     train_labels_tensor = t.Tensor(train_data['class'].values)
