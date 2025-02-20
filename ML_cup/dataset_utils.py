@@ -5,7 +5,6 @@ from sklearn.model_selection import KFold, train_test_split
 from torch.utils.data import DataLoader, Subset
 from torch.utils.data import Dataset
 
-
 class CupDataset(Dataset):
     def __init__(self, dataframe, device=t.device('cpu')):
         # Load the CSV file
@@ -81,6 +80,7 @@ def torch_k_fold(batch_size, dataset: pd.DataFrame, folds, random_state):
     :return: list of train and validation loaders for each fold
     """
 
+    np.random.seed(random_state)
     # split aside the test set as 20% of the dataset
     dev_data, test_data = train_test_split(dataset, test_size=0.2, random_state=random_state)
     dataset = dev_data
@@ -94,6 +94,7 @@ def torch_k_fold(batch_size, dataset: pd.DataFrame, folds, random_state):
         device = t.device('cpu')
 
     test_loader = DataLoader(CupDataset(test_data, device=device), batch_size=batch_size)
+    dev_loader = DataLoader(CupDataset(dev_data), batch_size=batch_size, shuffle=True, generator=t.Generator(device=device))
 
     for train_idx, val_idx in kf.split(dataset):
         # Create training and validation datasets for this fold
@@ -105,7 +106,7 @@ def torch_k_fold(batch_size, dataset: pd.DataFrame, folds, random_state):
             DataLoader(train_dataset, batch_size=batch_size, shuffle=True))
         val_loaders.append(DataLoader(val_dataset, batch_size=batch_size))
 
-    return train_loaders, val_loaders, test_loader
+    return train_loaders, val_loaders, dev_loader, test_loader
 
 
 def arrange_datasets(train_dataset: pd.DataFrame, test_dataset: pd.DataFrame):
