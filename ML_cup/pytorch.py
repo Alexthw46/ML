@@ -127,10 +127,10 @@ def torch_train(model: torch.nn.Module, train_loader: DataLoader, optimizer: Opt
             elif scheduler_on_val and scheduler is not None:
                 scheduler.step()
 
-            if early_stopper.check(avg_mee_val if val_loader is not None else avg_mee_train, model):
-                # Restore best weights and
-                # Stop training if no improvement for `patience` epochs
-                break
+        if early_stopper.check(avg_mee_val if val_loader is not None else avg_mee_train, model):
+            # Restore best weights and
+            # Stop training if no improvement for `patience` epochs
+            break
 
         if verbose:
             print(f'Train Epoch: {epoch} Loss: {avg_loss}' +

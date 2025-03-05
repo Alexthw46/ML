@@ -51,6 +51,7 @@ def monk(path: str, optimizer: t.optim.Optimizer, neural_network: t.nn.Module,
         train_loss.append(running_loss)
         acc = accuracy_score(train_labels_tensor.cpu().numpy(), t.round(outputs).detach().cpu().numpy())
         train_acc.append(acc)
+        optimizer.step()
 
         with t.no_grad():
             test_outputs = neural_network(test_features_tensor)
@@ -59,7 +60,6 @@ def monk(path: str, optimizer: t.optim.Optimizer, neural_network: t.nn.Module,
             acc = accuracy_score(test_labels_tensor.cpu().numpy(), t.round(test_outputs).detach().cpu().numpy())
             test_acc.append(acc)
 
-        optimizer.step()
         if scheduler is not None:
             scheduler.step()
 
