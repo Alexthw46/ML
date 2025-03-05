@@ -96,8 +96,8 @@ def monk(path: str, optimizer: t.optim.Optimizer, neural_network: t.nn.Module,
 
 
 def load_dataset(path, verbose=False):
-    train_file_path = 'data/monk+s+problems/' + path + '.train'
-    test_file_path = 'data/monk+s+problems/' + path + '.test'
+    train_file_path = '../data/monk+s+problems/' + path + '.train'
+    test_file_path = '../data/monk+s+problems/' + path + '.test'
     column_names = [
         'class',
         'a1',
