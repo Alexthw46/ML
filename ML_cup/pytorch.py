@@ -358,15 +358,23 @@ def grid_search_inner(model_builder: Callable[[], nn.Module], optimizer_params: 
         print(optimizer_params)
     return avg_train_loss, avg_val_loss, avg_fluctuation, best_model
 
-def torch_predict(model, test_loader: DataLoader):
+def torch_predict(model, test_loader: DataLoader, y_scaler: StandardScaler | None = None):
     # evaluate the model on the test set using mee metric
     predictions = []
     mee = []
+    mse = []
+    loss = MSELoss()
     with torch.no_grad():
         for data, true in test_loader:
             output = model(data)
             predictions.append(output)
+            # scale back the predictions and the true values if a scaler was used
+            if y_scaler is not None:
+                output = torch.tensor(y_scaler.inverse_transform(output.detach().cpu().numpy()), device=output.device)
+                true = torch.tensor(y_scaler.inverse_transform(true.detach().cpu().numpy()), device=true.device)
             mee.append(torch.norm(output - true, dim=-1))
+            mse.append(loss(output, true).item())
+
     return torch.mean(torch.cat(mee)).item()
 
 

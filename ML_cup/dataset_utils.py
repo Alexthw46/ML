@@ -109,7 +109,7 @@ def torch_split_dataset(dataset, train_ratio, batch_size, rand) -> (DataLoader, 
     return train_loader, val_loader
 
 
-def torch_k_fold(batch_size, dataset: pd.DataFrame, folds, random_state):
+def torch_k_fold(batch_size, dataset: pd.DataFrame, folds, random_state=42, device = t.device('cpu')) -> (list[DataLoader], list[DataLoader], DataLoader, DataLoader):
     """
     :param dataset: dataset to split
     :param batch_size: mini-batch size, use 0 for full batch
@@ -142,7 +142,7 @@ def torch_k_fold(batch_size, dataset: pd.DataFrame, folds, random_state):
 
         # Create DataLoaders for training and validation
         train_loaders.append(
-            DataLoader(train_dataset, batch_size=batch_size if batch_size > 0 else len(train_dataset), shuffle=True))
+            DataLoader(train_dataset, batch_size=batch_size if batch_size > 0 else len(train_dataset), shuffle=True, generator=t.Generator(device=device)))
         val_loaders.append(DataLoader(val_dataset, batch_size=batch_size if batch_size > 0 else len(val_dataset)))
 
     return train_loaders, val_loaders, dev_loader, test_loader

@@ -69,7 +69,8 @@ def monk(path: str, optimizer: t.optim.Optimizer, neural_network: t.nn.Module,
 
     if verbose:
         print(f"Overfitting Score: {avg_overfitting:.4f}")
-
+        print(f"Training Loss: {train_loss[-1]:.4f}, Accuracy: {train_acc[-1]:.4f}")
+        print(f"Test Loss: {test_loss[-1]:.4f}, Accuracy: {test_acc[-1]:.4f}")
         # Plot Loss Curve
         plt.figure(figsize=(8, 6))
         plt.plot(train_loss, label='Training Loss')
